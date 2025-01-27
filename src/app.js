@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import healthCheckerRouter from './routes/healthchecker.routes.js';
 
 const app = express(); // initialize express
 
@@ -20,4 +21,8 @@ app.use(express.urlencoded({
 
 // serve static files from the public directory use for the frontend
 app.use(express.static("public"));
+
+// set api for healthcheck
+app.use("/api/v1/healthcheck", healthCheckerRouter);
+
 export { app };
