@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import healthCheckerRouter from './routes/healthchecker.routes.js';
+import cookieParser from 'cookie-parser';
 
 const app = express(); // initialize express
 
@@ -24,5 +25,8 @@ app.use(express.static("public"));
 
 // set api for healthcheck
 app.use("/api/v1/healthcheck", healthCheckerRouter);
+
+// set cookie parser
+app.use(cookieParser());
 
 export { app };
