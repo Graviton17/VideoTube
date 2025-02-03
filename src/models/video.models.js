@@ -42,6 +42,7 @@ const videoSchema = new Schema(
     }
 )
 
+// this used to limit the data that is returned from the database by passing the queries and limit the data that is returned
 videoSchema.plugin(mongooseAggregatePaginate)
 
 export const Video = mongoose.model("Video", videoSchema)
