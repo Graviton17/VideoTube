@@ -1,5 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -17,12 +20,24 @@ const uploadOnCloudinary = async (filepath) => {
             resource_type: 'auto',
         });
 
-        fs.unlinkSync(filepath);
+        // Delete local file after successful upload
+        try {
+            fs.unlinkSync(filepath);
+        } catch (deleteError) {
+            console.warn("Could not delete local file:", deleteError.message);
+        }
+
         console.log("File uploaded successfully on Cloudinary");
         return response;
     } catch (error) {
-        fs.unlinkSync(filepath);
-        console.error(error);
+        // Try to delete local file in case of upload error
+        try {
+            fs.unlinkSync(filepath);
+        } catch (deleteError) {
+            console.warn("Could not delete local file:", deleteError.message);
+        }
+        
+        console.error("Upload failed:", error);
         return null;
     }
 }
