@@ -21,21 +21,21 @@ const uploadOnCloudinary = async (filepath) => {
         });
 
         // Delete local file after successful upload
-        try {
-            fs.unlinkSync(filepath);
-        } catch (deleteError) {
-            console.warn("Could not delete local file:", deleteError.message);
-        }
+        fs.unlink(filepath, (deleteError) => {
+            if (deleteError) {
+                console.warn("Could not delete local file:", deleteError.message);
+            }
+        });
 
         console.log("File uploaded successfully on Cloudinary");
         return response;
     } catch (error) {
         // Try to delete local file in case of upload error
-        try {
-            fs.unlinkSync(filepath);
-        } catch (deleteError) {
-            console.warn("Could not delete local file:", deleteError.message);
-        }
+        fs.unlink(filepath, (deleteError) => {
+            if (deleteError) {
+                console.warn("Could not delete local file:", deleteError.message);
+            }
+        });
         
         console.error("Upload failed:", error);
         return null;

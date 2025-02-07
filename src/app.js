@@ -35,6 +35,6 @@ app.use("/api/v1/user", userRouter);
 app.use(cookieParser());
 
 // set error handler
-app.use(errorHandler);
+// app.use(errorHandler);
 
 export { app };
