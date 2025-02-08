@@ -4,6 +4,27 @@ import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { APIError } from '../utils/APIError.js';
 import { User } from '../models/user.models.js';
 
+const generateAccessTokenAndRefreshToken = async (userID) => {
+    try {
+        const user = await User.findById(userID);
+    
+        // generate access token
+        const accessToken = user.generateAccessToken();
+    
+        // generate refresh token
+        const refreshToken = user.generateRefreshToken();
+    
+        // save refresh token in the database
+        user.refreshToken = refreshToken;
+        // save user without validation (means without checking the required fields)
+        await user.save({ validateBeforeSave: false });
+    
+        return { accessToken, refreshToken };
+    } catch (error) {
+        throw new APIError(500, "Something went wrong while generating tokens");
+    }
+}
+
 const registerUser = asyncHandler(async (req, res) => {
     const { fullName, username, email, password } = req.body;
 
@@ -63,4 +84,53 @@ const registerUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser }
+const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    // find user by email
+    const user = await User.findOne({
+        $or: [{ email }, { username: email }]
+    });
+
+    // check if user exists
+    if (!user) {
+        throw new APIError(401, "Invalid credentials");
+    }
+
+    // check if password is correct
+    const isPasswordCorrect = await user.comparePassword(password);
+    if (!isPasswordCorrect) {
+        throw new APIError(401, "Invalid credentials");
+    }
+
+    // generate access token and refresh token
+    const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+    if (!loggedInUser) {
+        throw new APIError(500, "Something went wrong while logging in the user");
+    }
+
+    // set the cookies options
+    const options = {
+        httpOnly: true, // to prevent access from client side
+        secure: process.env.NODE_ENV === "production", // to only send the cookie over https in production
+    }
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(new APIResponse(
+            200,
+            {
+                user: loggedInUser,
+                accessToken,
+                refreshToken
+            },
+            "User logged in successfully"
+        ));
+});
+
+export { registerUser, loginUser };
