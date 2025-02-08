@@ -3,7 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { APIError } from '../utils/APIError.js';
 import { User } from '../models/user.models.js';
-import { jwtDecode } from "jwt-decode";
+import jwtDecode from 'jsonwebtoken';
 
 const generateAccessTokenAndRefreshToken = async (userID) => {
     try {
@@ -135,7 +135,30 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-    
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                refreshToken: undefined
+            }
+        },
+        { new: true } // to set the updated document in the database
+    )
+
+    if (!user) {
+        throw new APIError(500, "Something went wrong while logging out the user");
+    }
+
+    const options = {
+        httpOnly: true, // to prevent access from client side
+        secure: process.env.NODE_ENV === "production", // to only send the cookie over https in production
+    }
+
+    return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new APIResponse(200, {}, "User logged out successfully"));
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
