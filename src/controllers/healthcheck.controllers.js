@@ -1,10 +1,9 @@
 import { APIResponse } from '../utils/APIResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-const healthCheck = asyncHandler(async (req, res) => {
-    return res
-        .status(200)
-        .json(new APIResponse(200, "OK", "Healthcheck successful"));
+const healthCheck = asyncHandler((req, res) => {
+    const response = new APIResponse(200, "OK", "Healthcheck successful");
+    res.status(200).json(response);
 });
 
 export { healthCheck };
