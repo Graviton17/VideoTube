@@ -138,7 +138,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     
 });
 
-const refreshaccessToken = asyncHandler(async (req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
     const refreshToken = req.cookies.refreshToken || req.body.refreshToken; // this body.refreshToken is for mobile app
 
     if (!refreshToken) {
@@ -189,4 +189,4 @@ const refreshaccessToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser, refreshaccessToken };
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
