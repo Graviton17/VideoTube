@@ -3,6 +3,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { APIError } from '../utils/APIError.js';
 import { User } from '../models/user.models.js';
+import jwtDecode from 'jsonwebtoken';
 
 const generateAccessTokenAndRefreshToken = async (userID) => {
     try {
@@ -133,4 +134,59 @@ const loginUser = asyncHandler(async (req, res) => {
         ));
 });
 
-export { registerUser, loginUser };
+const logoutUser = asyncHandler(async (req, res) => {
+    
+});
+
+const refreshaccessToken = asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken || req.body.refreshToken; // this body.refreshToken is for mobile app
+
+    if (!refreshToken) {
+        throw new APIError(401, "Cannot find refresh token");
+    }
+
+    // decode the refresh token
+    const decodedToken = await jwtDecode.verify(refreshToken, process.env.Refresh_Token_Secret);
+    if (!decodedToken) {
+        throw new APIError(401, "Invalid refresh token");
+    }
+
+    // find the user by id
+    const user = await User.findById(decodedToken?._id);
+    if (!user) {
+        throw new APIError(404, "User not found");
+    }
+
+    try {
+        // check if the refresh token is valid
+        if (user?.refreshToken !== refreshToken) {
+            throw new APIError(401, "Invalid refresh token");
+        }
+
+        // generate new access token and refresh token
+        const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+
+        // set the cookies options
+        const options = {
+            httpOnly: true, // to prevent access from client side
+            secure: process.env.NODE_ENV === "production", // to only send the cookie over https in production
+        }
+
+        return res
+            .status(200)
+            .cookie("accessToken", accessToken, options)
+            .cookie("refreshToken", refreshToken, options)
+            .json(new APIResponse(
+                200,
+                {
+                    accessToken,
+                    refreshToken
+                },
+                "Tokens refreshed successfully"
+            ));
+    } catch (error) {
+        throw new APIError(500, "Something went wrong while refreshing tokens");
+    }
+});
+
+export { registerUser, loginUser, logoutUser, refreshaccessToken };
