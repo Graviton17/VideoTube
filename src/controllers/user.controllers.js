@@ -1,9 +1,10 @@
 import { APIResponse } from '../utils/APIResponse.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
+import { uploadOnCloudinary, deleteFromCloudinary } from '../utils/cloudinary.js';
 import { APIError } from '../utils/APIError.js';
 import { User } from '../models/user.models.js';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
 const generateAccessTokenAndRefreshToken = async (userID) => {
     try {
@@ -298,20 +299,19 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 });
 
 const updateAvatar = asyncHandler(async (req, res) => {
-    const avatarLocalPath = req.files?.path;
-
+    const avatarLocalPath = req.file?.path;
+    console.log(req.file);
     if (!avatarLocalPath) {
         throw new APIError(400, "Error while processing avatar file");
     }
 
     // Delete old avatar from cloudinary
-    if (req.user.avatar) {
+    if (!req.user.avatar) {
         throw new APIError(500, "Failed to update avatar");
-
     }
 
     const imageId = req.user.avatar.split('/').pop().split('.')[0];
-    const response = await cloudinary.uploader.destroy(imageId);
+    const response = await deleteFromCloudinary(imageId);
 
     if (!response) {
         throw new APIError(500, "Failed to update avatar");
@@ -342,7 +342,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
 });
 
 const updateCoverImage = asyncHandler(async (req, res) => {
-    const coverImageLocalPath = req.files?.path;
+    const coverImageLocalPath = req.file?.path;
 
     if (!coverImageLocalPath) {
         throw new APIError(400, "Error while processing cover image file");
@@ -351,7 +351,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     // Delete old cover image from cloudinary
     if (req.user.coverImage) {
         const imageId = req.user.coverImage.split('/').pop().split('.')[0];
-        const response = await cloudinary.uploader.destroy(imageId);
+        const response = await deleteFromCloudinary(imageId);
 
         if (!response) {
             throw new APIError(500, "Failed to update cover image");
@@ -391,68 +391,72 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         throw new APIError(400, "Username is required");
     }
 
-    const channel = await User.aggregate(
-        [
-            {
-                $match: {
-                    username: username?.trim()?.toLowerCase()
-                }
-            },
-            {
-                // we collect all the channel then filter where your user id match
-                $lookup: {
-                    from: "subscriptions",
-                    localField: "_id",
-                    foreignField: "channel",
-                    as: "subscribers"
-                }
-            },
-            {
-                // we collect all the subscriber then filter where your user id match
-                $lookup: {
-                    from: "subscriptions",
-                    localField: "_id",
-                    foreignField: "subscriber",
-                    as: "subscriberedTo"
-                }
-            },
-            {
-                $addFields: {
-                    subscribersCount: {
-                        $size: "$subscribers"
-                    },
-                    channelSubcribed: {
-                        $size: "$subscriberedTo"
-                    },
-                    isSubscribed: {
-                        $cond: {
-                            if: {
-                                $in: [
-                                    req.user?._id,
-                                    "$subscribers.subscriber"
-                                ]
-                            },
-                            then: true,
-                            else: false
-                        }
+    console.log("Searching for username:", username);
+
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+            }
+        },
+        {
+            $lookup: {
+                from: "subscriptions",
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscriberedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelSubcribed: {
+                    $size: "$subscriberedTo"
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {
+                            $gt: [{
+                                $size: {
+                                    $filter: {
+                                        input: "$subscribers",
+                                        as: "sub",
+                                        cond: { $eq: ["$$sub.subscriber", new mongoose.Types.ObjectId(req.user?._id)] }
+                                    }
+                                }
+                            }, 0]
+                        },
+                        then: true,
+                        else: false
                     }
                 }
-            },
-            {
-                // project only neccaesary field
-                $project: {
-                    fullName: 1,
-                    username: 1,
-                    email: 1,
-                    avatar: 1,
-                    coverImage: 1,
-                    subscribersCount: 1,
-                    channelSubcribed: 1,
-                    isSubscribed: 1
-                }
             }
-        ]
-    )
+        },
+        {
+            $project: {
+                fullName: 1,
+                username: 1,
+                email: 1,
+                avatar: 1,
+                coverImage: 1,
+                subscribersCount: 1,
+                channelSubcribed: 1,
+                isSubscribed: 1
+            }
+        }
+    ]);
+
+    console.log("Aggregation result:", channel);
 
     if (!channel?.length) {
         throw new APIError(404, "Channel not found");
