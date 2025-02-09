@@ -3,21 +3,20 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 import { APIError } from '../utils/APIError.js';
 import { User } from '../models/user.models.js';
-import jwtDecode from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 const generateAccessTokenAndRefreshToken = async (userID) => {
     try {
         const user = await User.findById(userID);
 
         // generate access token
-        const accessToken = user.generateAccessToken();
+        const accessToken = await user.generateAccessToken();
 
         // generate refresh token
-        const refreshToken = user.generateRefreshToken();
+        const refreshToken = await user.generateRefreshToken();
 
         // save refresh token in the database
         user.refreshToken = refreshToken;
-        // save user without validation (means without checking the required fields)
         await user.save({ validateBeforeSave: false });
 
         return { accessToken, refreshToken };
@@ -88,6 +87,10 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
+    if (!password || !email) {
+        throw new APIError(400, "All fields are required");
+    }
+
     // find user by email
     const user = await User.findOne({
         $or: [{ email }, { username: email }]
@@ -95,7 +98,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
     // check if user exists
     if (!user) {
-        throw new APIError(401, "Invalid credentials");
+        throw new APIError(401, "User does not exist");
     }
 
     // check if password is correct
@@ -135,6 +138,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
+    console.log("User:", req.user); // Debugging
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
@@ -162,14 +166,14 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refreshAccessToken = asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies.refreshToken || req.body.refreshToken; // this body.refreshToken is for mobile app
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken; // this body.refreshToken is for mobile app
 
     if (!refreshToken) {
         throw new APIError(401, "Cannot find refresh token");
     }
 
     // decode the refresh token
-    const decodedToken = await jwtDecode.verify(refreshToken, process.env.Refresh_Token_Secret);
+    const decodedToken = jwt.verify(refreshToken, process.env.Refresh_Token_Secret);
     if (!decodedToken) {
         throw new APIError(401, "Invalid refresh token");
     }
@@ -187,7 +191,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         }
 
         // generate new access token and refresh token
-        const { accessToken, refreshToken } = await generateAccessTokenAndRefreshToken(user._id);
+        const { accessToken, refreshToken: newRefreshToken } = await generateAccessTokenAndRefreshToken(user._id);
 
         // set the cookies options
         const options = {
@@ -198,12 +202,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         return res
             .status(200)
             .cookie("accessToken", accessToken, options)
-            .cookie("refreshToken", refreshToken, options)
+            .cookie("refreshToken", newRefreshToken, options)
             .json(new APIResponse(
                 200,
                 {
                     accessToken,
-                    refreshToken
+                    refreshToken: newRefreshToken
                 },
                 "Tokens refreshed successfully"
             ));
@@ -214,23 +218,22 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
-
-    // check if current password is correct
-    const isPasswordCorrect = await req.user.comparePassword(currentPassword);
-    if (!isPasswordCorrect) {
-        throw new APIError(401, "Invalid current password");
+    if (!currentPassword || !newPassword) {
+        throw new APIError(400, "All fields are required");
     }
 
-    // get user from the database
-    const user = await User.findById(req.user?._id);
+    const user = await User.findById(req.user._id).select("+password");
     if (!user) {
         throw new APIError(404, "User not found");
     }
 
-    // update the password
+    const isPasswordCorrect = await user.comparePassword(currentPassword);
+    if (!isPasswordCorrect) {
+        throw new APIError(401, "Invalid current password");
+    }
+
     user.password = newPassword;
     const response = await user.save({ validateBeforeSave: false });
-
     if (!response) {
         throw new APIError(500, "Something went wrong while changing the password");
     }

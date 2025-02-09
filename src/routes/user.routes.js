@@ -32,7 +32,7 @@ userRouter.route("/register").post(
     registerUser);
 
 userRouter.route("/login").post(loginUser);
-userRouter.route("/refresh").post(refreshAccessToken);
+userRouter.route("/refresh-token").post(refreshAccessToken);
 
 // first middleware to verify the JWT token and than give control to the controller(logoutUser)
 userRouter.route("/logout").post(verifyJWT, logoutUser);

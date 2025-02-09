@@ -4,19 +4,19 @@ import { User } from '../models/user.models.js';
 import jwtDecode from 'jsonwebtoken';
 
 const verifyJWT = asyncHandler(async (req, _, next) => {
-    const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+    const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
     if (!token) {
-        throw new APIError(401, "Unauthorized");
+        throw new APIError(401, "User cannot be found");
     }
 
     try {
         const decoded = await jwtDecode.verify(token, process.env.Access_Token_Secret);
-        if(!decoded) {
+        if (!decoded) {
             throw new APIError(401, "Unauthorized");
         }
-    
+
         const user = await User.findById(decoded?._id).select("-password -refreshToken");
-        if(!user) {
+        if (!user) {
             throw new APIError(401, "Unauthorized");
         }
 
