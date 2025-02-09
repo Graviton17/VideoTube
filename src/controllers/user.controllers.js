@@ -8,12 +8,19 @@ import jwt from 'jsonwebtoken';
 const generateAccessTokenAndRefreshToken = async (userID) => {
     try {
         const user = await User.findById(userID);
+        if (!user) {
+            throw new APIError(404, "User not found");
+        }
 
         // generate access token
         const accessToken = await user.generateAccessToken();
 
         // generate refresh token
         const refreshToken = await user.generateRefreshToken();
+
+        if (!accessToken || !refreshToken) {
+            throw new APIError(500, "Something went wrong while generating tokens");
+        }
 
         // save refresh token in the database
         user.refreshToken = refreshToken;
@@ -138,7 +145,6 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-    console.log("User:", req.user); // Debugging
     const user = await User.findByIdAndUpdate(
         req.user._id,
         {
