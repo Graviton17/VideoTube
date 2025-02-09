@@ -222,14 +222,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     }
 
     // get user from the database
-    const user = User.findById(req.user?._id);
+    const user = await User.findById(req.user?._id);
     if (!user) {
         throw new APIError(404, "User not found");
     }
 
     // update the password
-    user?.password = newPassword;
-    const response = await user?.save({ validateBeforeSave: false });
+    user.password = newPassword;
+    const response = await user.save({ validateBeforeSave: false });
 
     if (!response) {
         throw new APIError(500, "Something went wrong while changing the password");
