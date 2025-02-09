@@ -212,4 +212,177 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+
+    // check if current password is correct
+    const isPasswordCorrect = await req.user.comparePassword(currentPassword);
+    if (!isPasswordCorrect) {
+        throw new APIError(401, "Invalid current password");
+    }
+
+    // get user from the database
+    const user = User.findById(req.user?._id);
+    if (!user) {
+        throw new APIError(404, "User not found");
+    }
+
+    // update the password
+    user?.password = newPassword;
+    const response = await user?.save({ validateBeforeSave: false });
+
+    if (!response) {
+        throw new APIError(500, "Something went wrong while changing the password");
+    }
+
+    return res
+        .status(200)
+        .json(new APIResponse(
+            200,
+            {},
+            "Password changed successfully"
+        ));
+});
+
+const getUserDetails = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(new APIResponse(
+            200,
+            req.user,
+            "User details fetched successfully"
+        ));
+});
+
+const updateUserDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body;
+
+    if(!fullName || !email) {
+        throw new APIError(400, "All fields are required");
+    }
+
+    // check if email is already taken
+    const isEmailTaken = await User.exists({ email });
+    if (isEmailTaken) {
+        throw new APIError(409, "Email is already taken");
+    }
+
+    // update user details
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                fullName,
+                email
+            }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new APIResponse(
+            200,
+            user,
+            "User details updated successfully"
+        ));
+});
+
+const updateAvatar = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.files?.path;
+
+    if (!avatarLocalPath) {
+        throw new APIError(400, "Error while processing avatar file");
+    }
+
+    // Delete old avatar from cloudinary
+    if (req.user.avatar) {
+        throw new APIError(500, "Failed to update avatar");
+        
+    }
+
+    const imageId = req.user.avatar.split('/').pop().split('.')[0];
+    const response = await cloudinary.uploader.destroy(imageId);
+
+    if (!response) {
+        throw new APIError(500, "Failed to update avatar");
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    if (!avatar.url) {
+        throw new APIError(500, "Failed to update avatar");
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                avatar: avatar?.url
+            }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new APIResponse(
+            200,
+            user,
+            "Avatar updated successfully"
+        ));
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.files?.path;
+
+    if (!coverImageLocalPath) {
+        throw new APIError(400, "Error while processing cover image file");
+    }
+
+    // Delete old cover image from cloudinary
+    if (req.user.coverImage) {
+        const imageId = req.user.coverImage.split('/').pop().split('.')[0];
+        const response = await cloudinary.uploader.destroy(imageId);
+
+        if (!response) {
+            throw new APIError(500, "Failed to update cover image");
+        }
+    }
+
+    // upload new cover image on cloudinary
+    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
+    if (!coverImage.url) {
+        throw new APIError(500, "Failed to update cover image");
+    }
+
+    // update cover image in the database
+    const user = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {
+                coverImage: coverImage.url
+            }
+        },
+        { new: true }
+    ).select("-password -refreshToken");
+
+    return res
+        .status(200)
+        .json(new APIResponse(
+            200,
+            user,
+            "Cover image updated successfully"
+        ));
+});
+
+export {
+    registerUser,
+    loginUser,
+    logoutUser,
+    refreshAccessToken,
+    changeCurrentPassword,
+    getUserDetails,
+    updateUserDetails,
+    updateAvatar,
+    updateCoverImage
+};
