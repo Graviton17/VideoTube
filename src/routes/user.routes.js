@@ -37,7 +37,7 @@ userRouter.route("/refresh-token").post(refreshAccessToken);
 // first middleware to verify the JWT token and than give control to the controller(logoutUser)
 userRouter.route("/logout").post(verifyJWT, logoutUser);
 
-userRouter.route("/details").get(verifyJWT, getUserDetails);
+userRouter.route("/user-details").get(verifyJWT, getUserDetails);
 userRouter.route("/change-password").post(verifyJWT, changeCurrentPassword);
 userRouter.route("/update-details").put(verifyJWT, updateUserDetails);
 
