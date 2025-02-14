@@ -53,17 +53,6 @@ const getUserTweets = asyncHandler(async (req, res) => {
             }
         },
         {
-            $lookup: {
-                from: "users",
-                localField: "owner",
-                foreignField: "_id",
-                as: "owner"
-            }
-        },
-        {
-            $unwind: "$owner"
-        },
-        {
             $project: {
                 content: 1,
                 createdAt: 1,
@@ -81,11 +70,40 @@ const getUserTweets = asyncHandler(async (req, res) => {
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
-    //TODO: update tweet
+    const tweetId = req.params.tweetId;
+
+    const tweet = await Tweet.findById(tweetId);
+    if(!tweet) {
+        throw new APIError(404, 'Tweet not found');
+    }
+
+    const { content } = req.body;
+    if (!content) {
+        throw new APIError(400, 'Content is required');
+    }
+
+    tweet.content = content;
+    await tweet.save();
+
+    return res
+        .status(200)
+        .json(new APIResponse(200, tweet, 'Tweet updated successfully'));
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    //TODO: delete tweet
+    const tweetId = req.params.tweetId;
+    if (!tweetId) {
+        throw new APIError(400, 'Tweet ID is required');
+    }
+
+    const response = await Tweet.deleteOne({ _id: tweetId });
+    if (!response.deletedCount) {
+        throw new APIError(404, 'Tweet not found');
+    }
+
+    return res
+        .status(200)
+        .json(new APIResponse(200, null, 'Tweet deleted successfully'));
 });
 
 export {
