@@ -3,6 +3,7 @@ import cors from 'cors';
 import healthCheckerRouter from './routes/healthchecker.routes.js';
 import userRouter from './routes/user.routes.js';
 import tweetRouter from './routes/tweet.routes.js';
+import likeRouter from './routes/like.routes.js';
 import cookieParser from 'cookie-parser';
 import {errorHandler} from './middlewares/error.middlewares.js';
 
@@ -34,6 +35,9 @@ app.use("/api/v1/user", userRouter);
 
 // set api for tweet
 app.use("/api/v1/tweet", tweetRouter);
+
+// set api for like
+app.use("/api/v1/like", likeRouter);
 
 // set cookie parser
 app.use(cookieParser());
