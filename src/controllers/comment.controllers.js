@@ -10,6 +10,44 @@ const getVideoComments = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     const { page = 1, limit = 10 } = req.query
 
+    if(!mongoose.Types.ObjectId.isValid(videoId)) {
+        throw new APIError(400, "Invalid video ID");
+    }
+
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    if (isNaN(pageNumber) || pageNumber <= 0) {
+        throw new APIError(400, "Invalid page value");
+    }
+    if (isNaN(limitNumber) || limitNumber <= 0) {
+        throw new APIError(400, "Invalid limit value");
+    }
+
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const comments = await Comment.aggregate([
+        {
+            $match: {
+                video: new mongoose.Types.ObjectId(videoId)
+            }
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limitNumber
+        }
+    ]);
+
+    if (comments.length === 0) {
+        return res
+            .status(200)
+            .json(new APIResponse(200, [], "No comments found"));
+    }
+
+    return res
+        .status(200)
+        .json(new APIResponse(200, { comments }, "Comments retrieved successfully"));
 });
 
 const addComment = asyncHandler(async (req, res) => {
@@ -68,7 +106,21 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-    // TODO: delete a comment
+    const { commentId } = req.params;
+    if(!mongoose.Types.ObjectId.isValid(commentId)) {
+        throw new APIError(400, "Invalid comment ID");
+    }
+
+    const comment = await Comment.findById(commentId);
+    if(!comment) {
+        throw new APIError(404, "Comment not found");
+    }
+
+    await Comment.findByIdAndDelete(commentId);
+
+    return res
+        .status(200)
+        .json(new APIResponse(200, null, "Comment deleted successfully"));
 });
 
 export {
