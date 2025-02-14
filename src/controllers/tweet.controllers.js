@@ -40,70 +40,15 @@ const createTweet = asyncHandler(async (req, res) => {
 });
 
 const getUserTweets = asyncHandler(async (req, res) => {
-    const { userId } = req.params;
-
-    if (!isValidObjectId(userId)) {
-        throw new APIError(400, 'Invalid user ID');
-    }
-
-    const tweets = await Tweet.aggregate([
-        {
-            $match: {
-                owner: new mongoose.Types.ObjectId(userId)
-            }
-        },
-        {
-            $project: {
-                content: 1,
-                createdAt: 1,
-            }
-        }
-    ]);
-
-    if(!tweets.length) {
-        throw new APIError(404, 'User has no tweets');
-    }
-
-    return res
-        .status(200)
-        .json(new APIResponse(200, tweets, "User tweets fetched successfully"));
+    // TODO: get user tweets
 });
 
 const updateTweet = asyncHandler(async (req, res) => {
-    const tweetId = req.params.tweetId;
-
-    const tweet = await Tweet.findById(tweetId);
-    if(!tweet) {
-        throw new APIError(404, 'Tweet not found');
-    }
-
-    const { content } = req.body;
-    if (!content) {
-        throw new APIError(400, 'Content is required');
-    }
-
-    tweet.content = content;
-    await tweet.save();
-
-    return res
-        .status(200)
-        .json(new APIResponse(200, tweet, 'Tweet updated successfully'));
+    //TODO: update tweet
 });
 
 const deleteTweet = asyncHandler(async (req, res) => {
-    const tweetId = req.params.tweetId;
-    if (!tweetId) {
-        throw new APIError(400, 'Tweet ID is required');
-    }
-
-    const response = await Tweet.deleteOne({ _id: tweetId });
-    if (!response.deletedCount) {
-        throw new APIError(404, 'Tweet not found');
-    }
-
-    return res
-        .status(200)
-        .json(new APIResponse(200, null, 'Tweet deleted successfully'));
+    //TODO: delete tweet
 });
 
 export {

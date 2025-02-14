@@ -4,6 +4,7 @@ import healthCheckerRouter from './routes/healthchecker.routes.js';
 import userRouter from './routes/user.routes.js';
 import tweetRouter from './routes/tweet.routes.js';
 import likeRouter from './routes/like.routes.js';
+import videoRouter from './routes/video.routes.js';
 import cookieParser from 'cookie-parser';
 import {errorHandler} from './middlewares/error.middlewares.js';
 
@@ -38,6 +39,9 @@ app.use("/api/v1/tweet", tweetRouter);
 
 // set api for like
 app.use("/api/v1/like", likeRouter);
+
+// set api for video
+app.use("/api/v1/video", videoRouter);
 
 // set cookie parser
 app.use(cookieParser());
