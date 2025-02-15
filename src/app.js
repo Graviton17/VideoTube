@@ -6,6 +6,7 @@ import tweetRouter from './routes/tweet.routes.js';
 import likeRouter from './routes/like.routes.js';
 import videoRouter from './routes/video.routes.js';
 import commentRouter from './routes/comment.rotues.js';
+import playlistRouter from './routes/playlist.routes.js';
 import cookieParser from 'cookie-parser';
 import {errorHandler} from './middlewares/error.middlewares.js';
 
@@ -29,25 +30,14 @@ app.use(express.urlencoded({
 // serve static files from the public directory use for the frontend
 app.use(express.static("public"));
 
-// set api for healthcheck
 app.use("/api/v1/healthcheck", healthCheckerRouter);
-
-// set api for user
 app.use("/api/v1/user", userRouter);
-
-// set api for tweet
 app.use("/api/v1/tweet", tweetRouter);
-
-// set api for like
 app.use("/api/v1/like", likeRouter);
-
-// set api for video
 app.use("/api/v1/video", videoRouter);
-
-// set api for comment
 app.use("/api/v1/comment", commentRouter);
+app.use("/api/v1/playlist", playlistRouter);
 
-// set cookie parser
 app.use(cookieParser());
 
 // set error handler
